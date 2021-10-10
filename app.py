@@ -4,6 +4,7 @@ import numpy as np
 from keras.models import model_from_json
 import operator
 import cv2
+import simplejpeg
 import sys, os
 
 # Loading the model
@@ -54,6 +55,10 @@ def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 def gen_frames():  
+    prev = '0'
+
+    count_for_letter = 0
+    text = ""
     while True:
 
         _, frame = camera.read()
@@ -127,14 +132,21 @@ def gen_frames():
 
         if current_symbol == '0':
             current_symbol = 'nothing'
-        cv2.putText(frame,current_symbol, (10, 120), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255), 1)    
+
+        if(prev == current_symbol and current_symbol != 'nothing'):
+            count_for_letter += 1
+
+        if(count_for_letter >= 5):
+            text = text + current_symbol
+        cv2.putText(frame,text, (10, 120), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255), 1)   
+        cv2.putText(frame,current_symbol, (10, 120), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255), 1)   
         if not _:
             break
         else:
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
+            ret = simplejpeg.encode_jpeg(frame, colorspace='bgr')
+            #frame = buffer.tobytes()
             yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
+                   b'Content-Type: image/jpeg\r\n\r\n' + ret + b'\r\n')  # concat frame one by one and show result
         #interrupt = cv2.waitKey(10)
         #if interrupt & 0xFF == 27: # esc key
             #break
