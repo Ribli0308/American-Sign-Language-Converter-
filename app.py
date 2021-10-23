@@ -7,6 +7,13 @@ import cv2
 import simplejpeg
 import sys, os
 
+SHRINK_RATIO = 0.25
+FPS = 5
+FRAME_RATE = 5
+WIDTH = 640
+HEIGHT = 480
+
+
 # Loading the model
 json_file = open("model-bw-final1.json", "r")
 model_json = json_file.read()
@@ -46,9 +53,17 @@ app = Flask(__name__)
 
 camera = cv2.VideoCapture(0)
 
+camera.set(3,WIDTH)
+camera.set(4,HEIGHT)
+camera.set(5,FPS)
+camera.set(7,FRAME_RATE)
+
+
+
+
 @app.route('/')
-def index():
-    return render_template("index.html")
+def webpage():
+    return render_template("webpage.html")
 
 @app.route('/video_feed')
 def video_feed():
@@ -56,9 +71,13 @@ def video_feed():
 
 def gen_frames():  
     prev = '0'
-
+    flag = 0
     count_for_letter = 0
     text = ""
+
+
+
+    
     while True:
 
         _, frame = camera.read()
@@ -75,8 +94,8 @@ def gen_frames():
         roi = frame[10:410, 220:520]
 
     
-
-        cv2.imshow("Frame", frame)
+        roi = cv2.resize(roi, None, fx= SHRINK_RATIO, fy=SHRINK_RATIO)
+        #cv2.imshow("Frame", frame)
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     
         blur = cv2.GaussianBlur(gray,(5,5),2)
@@ -133,13 +152,24 @@ def gen_frames():
         if current_symbol == '0':
             current_symbol = 'nothing'
 
+        
+
         if(prev == current_symbol and current_symbol != 'nothing'):
+
             count_for_letter += 1
 
-        if(count_for_letter >= 5):
+        else:
+            count_for_letter = 0
+            flag = 0
+
+        prev = current_symbol
+        
+        if(count_for_letter >= 10 and flag != 1):
             text = text + current_symbol
-        cv2.putText(frame,text, (10, 120), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255), 1)   
-        cv2.putText(frame,current_symbol, (10, 120), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,255), 1)   
+            flag = 1
+        
+        cv2.putText(frame, "Word : " + text, (10, 50), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255), 4)   
+        cv2.putText(frame,"Current alphabet : " + current_symbol, (10, 100), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255), 4)   
         if not _:
             break
         else:
